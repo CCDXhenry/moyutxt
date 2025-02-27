@@ -50,10 +50,23 @@ class BookReader:
             print(f"文件不存在！路径：{filepath}")
             return
         
+        # 尝试不同的编码格式
+        encodings = ['utf-8', 'gbk', 'gb2312', 'gb18030', 'ansi']
+        content = None
+        
+        for encoding in encodings:
+            try:
+                with open(filepath, 'r', encoding=encoding) as f:
+                    content = f.read()
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        if content is None:
+            print("无法识别文件编码格式！")
+            return
+        
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
             book_name = os.path.basename(filepath)
             self.bookshelf[book_name] = {
                 "content": content,
@@ -115,7 +128,9 @@ class BookReader:
             print(f"进度：{current_line}/{book['total_lines']}")
             print("="*50)
             print("操作说明：")
-            print("n: 下一页  p: 上一页  c: 选择章节  q: 退出")
+            print("n: 下一页  p: 上一页")
+            print("j: 下一章  k: 上一章")
+            print("c: 选择章节  q: 退出")
             print("="*50 + "\n")
             
             # 显示当前页面（显示10行）
@@ -136,7 +151,39 @@ class BookReader:
                     os._exit(0)
                 cmd = cmd.lower()
             
-            if cmd == 'c':
+            if cmd == 'j':  # 下一章
+                # 找到当前行所在的章节
+                current_chapter_idx = -1
+                for idx, (line_num, _) in enumerate(chapters):
+                    if line_num > current_line:
+                        break
+                    current_chapter_idx = idx
+                
+                # 跳转到下一章
+                if current_chapter_idx < len(chapters) - 1:
+                    current_line = chapters[current_chapter_idx + 1][0]
+                    # 自动保存进度
+                    self.bookshelf[book_name]["progress"] = current_line
+                    self.bookshelf[book_name]["last_read"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    self.save_bookshelf()
+            
+            elif cmd == 'k':  # 上一章
+                # 找到当前行所在的章节
+                current_chapter_idx = -1
+                for idx, (line_num, _) in enumerate(chapters):
+                    if line_num >= current_line:
+                        break
+                    current_chapter_idx = idx
+                
+                # 跳转到上一章
+                if current_chapter_idx > 0:
+                    current_line = chapters[current_chapter_idx - 1][0]
+                    # 自动保存进度
+                    self.bookshelf[book_name]["progress"] = current_line
+                    self.bookshelf[book_name]["last_read"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    self.save_bookshelf()
+            
+            elif cmd == 'c':
                 self.show_chapters(chapters)
                 try:
                     chapter_idx = int(input("请输入要跳转的章节序号：")) - 1
