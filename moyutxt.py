@@ -4,6 +4,7 @@ import os
 import json
 import time
 from typing import Dict, List
+import shutil
 
 # 添加按键检测所需的模块
 if os.name == 'nt':  # Windows
@@ -17,7 +18,7 @@ else:  # Unix
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
-            tty.setraw(sys.stdin.fileno())
+            tty.se:raw(sys.stdin.fileno())
             ch = sys.stdin.read(1)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
@@ -122,6 +123,12 @@ class BookReader:
         chapters = self.get_chapters(lines)
         
         while True:
+            # 获取终端窗口大小
+            terminal_size = shutil.get_terminal_size()
+            # 预留操作说明的空间(7行)和边框空间(3行)，剩下的才是正文显示区域
+            content_height = terminal_size.lines - 10
+            content_height = max(content_height, 5)  # 确保至少显示5行内容
+            
             os.system('cls' if os.name == 'nt' else 'clear')
             print("\n" + "="*50)
             print(f"正在阅读：《{book_name}》")
@@ -133,20 +140,20 @@ class BookReader:
             print("c: 选择章节  q: 退出")
             print("="*50 + "\n")
             
-            # 显示当前页面（显示10行）
-            for i in range(current_line, min(current_line + 10, len(lines))):
+            # 显示当前页面（根据终端高度显示）
+            for i in range(current_line, min(current_line + content_height, len(lines))):
                 print(lines[i])
             
             # 获取按键输入
             if os.name == 'nt':
                 cmd = msvcrt.getch()
-                if ord(cmd) == 27:  # ESC键
+                if ord(cmd) == 27 or ord(cmd) == 32:  # ESC键或空格键
                     os.system('cls' if os.name == 'nt' else 'clear')
                     os._exit(0)
                 cmd = cmd.decode('utf-8').lower()
             else:
                 cmd = getch()
-                if ord(cmd) == 27:  # ESC键
+                if ord(cmd) == 27 or ord(cmd) == 32:  # ESC键或空格键
                     os.system('cls' if os.name == 'nt' else 'clear')
                     os._exit(0)
                 cmd = cmd.lower()
@@ -200,13 +207,13 @@ class BookReader:
                     print("请输入有效的数字！")
                     time.sleep(1)
             elif cmd == 'n':
-                current_line = min(current_line + 10, len(lines))
+                current_line = min(current_line + content_height, len(lines))
                 # 自动保存进度
                 self.bookshelf[book_name]["progress"] = current_line
                 self.bookshelf[book_name]["last_read"] = time.strftime("%Y-%m-%d %H:%M:%S")
                 self.save_bookshelf()
             elif cmd == 'p':
-                current_line = max(0, current_line - 10)
+                current_line = max(0, current_line - content_height)
                 # 自动保存进度
                 self.bookshelf[book_name]["progress"] = current_line
                 self.bookshelf[book_name]["last_read"] = time.strftime("%Y-%m-%d %H:%M:%S")
